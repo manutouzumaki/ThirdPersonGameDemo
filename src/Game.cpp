@@ -18,8 +18,8 @@ void Game::Initialize() {
 
 
     // TODO: load animated model
-    mTexture.Initialize("../assets/dancing_stormtrooper/textures/Stormtroopermat_baseColor.png");
-    cgltf_data *CloneModel = LoadGLTFFile("../assets/dancing_stormtrooper/scene.gltf"); 
+    mTexture.Initialize("../assets/clone/textures/Stormtroopermat_baseColor.png");
+    cgltf_data *CloneModel = LoadGLTFFile("../assets/cloneAnims/clone.gltf"); 
     //mTexture.Initialize("../assets/Woman.png");
     //cgltf_data *CloneModel = LoadGLTFFile("../assets/Woman.gltf");
     mTest.InitializeAnimated(CloneModel);
@@ -45,17 +45,18 @@ void Game::Initialize() {
     mShader.UpdateMat4("model", transformToMat4(model));
     mShader.UpdateVec3("light", vec3(0.5f, 1, 1));     
 
-    mShader.UpdateMat4Array("invBindPose", 120, &mSkeleton.mInvBindPose[0]);
-
     mShader.Bind();
     mTexture.Bind(&mShader, "tex0", 0);
     mTest.Bind();
+
+    mShader.UpdateMat4Array("invBindPose", (int)mSkeleton.mInvBindPose.size(), &mSkeleton.mInvBindPose[0]);
 }
 
 void Game::Update(float dt) {
     mPlayback = mClips[0].Sample(mAnimatedPose, mPlayback + dt); 
     mAnimatedPose.GetMatrixPalette(mPosePalette);
-    mShader.UpdateMat4Array("pose", 120, &mPosePalette[0]);
+    
+    mShader.UpdateMat4Array("pose", (int)mPosePalette.size(), &mPosePalette[0]);
 }
 
 void Game::Render() {
