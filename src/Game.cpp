@@ -3,10 +3,10 @@
 #include "Vec3.h"
 #include "Mat4.h"
 #include "Transform.h"
+#include "Slotmap.h"
 
 #include <stdio.h>
 #include <cmath>
-//#include <glad/glad.h>
 
 #define TO_RAD(value) ((value)*(3.14159265359f/180.0f))
 
@@ -50,22 +50,68 @@ void Game::Initialize() {
     mTest.Bind();
 
     mShader.UpdateMat4Array("invBindPose", (int)mSkeleton.mInvBindPose.size(), &mSkeleton.mInvBindPose[0]);
+    
+
+
+    // TODO: Slotmap Test ...
+    TransformSlotmap slotmap;
+    slotmap.Initialize();
+
+
+    TransformComponent transformManu = {
+        "manu", vec3(24, 24, 24)
+    };
+    TransformComponent transformTomi = {
+        "tomi", vec3(24, 24, 24)
+    };
+    TransformComponent transformGonza = {
+        "gonza", vec3(18, 18, 18)
+    };
+    TransformComponent transformJuana = {
+        "juana", vec3(22, 22, 22)
+    };
+    TransformComponent transformLaura = {
+        "laura", vec3(54, 54, 54)
+    };
+    TransformComponent transformPablo = {
+        "pablo", vec3(54, 54, 54)
+    };
+    TransformComponent transformIndia = {
+        "india", vec3(15, 15, 15)
+    };
+
+
+    SlotmapKey indiaKey = slotmap.AddComponent(transformIndia);
+    SlotmapKey manuKey = slotmap.AddComponent(transformManu);
+    SlotmapKey pabloKey = slotmap.AddComponent(transformPablo);
+    SlotmapKey juanaKey = slotmap.AddComponent(transformJuana);
+
+    TransformComponent manu = slotmap.GetComponent(manuKey);
+
+    slotmap.RemoveComponent(pabloKey);
+    slotmap.RemoveComponent(manuKey);
+    SlotmapKey tomiKey = slotmap.AddComponent(transformTomi);
+    slotmap.RemoveComponent(juanaKey);
+     
+    manuKey = slotmap.AddComponent(transformManu);
+
+    TransformComponent tomi = slotmap.GetComponent(tomiKey);
+    TransformComponent manuAfter = slotmap.GetComponent(manuKey);
+    TransformComponent india = slotmap.GetComponent(indiaKey);
+
+
+     int StopHere = 0;
+    (void)StopHere;
 }
 
 void Game::Update(float dt) {
-    mPlayback = mClips[0].Sample(mAnimatedPose, mPlayback + dt); 
+    mPlayback = mClips[2].Sample(mAnimatedPose, mPlayback + dt); 
     mAnimatedPose.GetMatrixPalette(mPosePalette);
-    
     mShader.UpdateMat4Array("pose", (int)mPosePalette.size(), &mPosePalette[0]);
 }
 
 void Game::Render() {
-    // Draw Mesh
-
-    //mRenderer.DrawArray(mMesh.mVerticesCount);
     mRenderer.DrawIndex(mTest.mIndicesCount);
-
-
 }
 
 void Game::Shutdown() {

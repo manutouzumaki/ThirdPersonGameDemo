@@ -4,7 +4,7 @@ Clip::Clip() {
     mName = "No Name";
     mStartTime = 0.0f;
     mEndTime = 0.0f;
-    mLooping = false;
+    mLooping = true;
 }
 
 unsigned int Clip::GetIdAtIndex(unsigned int index) {
