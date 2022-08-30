@@ -60,7 +60,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam) {
     return DefWindowProc(hwnd, iMsg, wParam, lParam);
 }
 
-static float ProcessXInputStick(WORD value, int deadZoneValue)
+
+
+static float ProcessXInputStick(SHORT value, int deadZoneValue)
 {
     float result = 0;
     if(value < -deadZoneValue)
@@ -164,13 +166,6 @@ static void ProcessInputAndMessages(Input *lastInput) {
             gInput.mJoyButtons[i].mWasDown = false; 
         }
     }
-
-    if(gInput.mJoyA.mIsDown != gInput.mJoyA.mWasDown) {
-        if(gInput.mJoyA.mIsDown) {
-            printf("A press\n");
-        }
-    }
-
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
@@ -275,7 +270,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
     glViewport(0, 0, clientWidth, clientHeight);
     glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
     glPointSize(5.0f);
 
     LARGE_INTEGER frequency = {};
@@ -327,4 +322,95 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     ReleaseDC(hwnd, hdc);
     
     return 0;
+}
+
+// Input function implementation
+
+bool KeyboardGetKeyDown(int key) {
+    return gInput.mKeys[key].mIsDown;
+}
+
+bool KeyboardGetKeyJustDown(int key) {
+    if(gInput.mKeys[key].mIsDown != gInput.mKeys[key].mWasDown) {
+        return gInput.mKeys[key].mIsDown; 
+    }
+    return false;
+}
+
+bool KeyboardGetKeyJustUp(int key) {
+    if(gInput.mKeys[key].mIsDown != gInput.mKeys[key].mWasDown) {
+        return gInput.mKeys[key].mWasDown; 
+    }
+    return false;
+}
+
+bool KeyboardGetKeyUp(int key) {
+    return !gInput.mKeys[key].mIsDown;
+}
+
+bool MouseGetButtonDown(int button) {
+    return gInput.mMouseButtons[button].mIsDown;
+}
+
+bool MouseGetButtonJustDown(int button) {
+    if(gInput.mMouseButtons[button].mIsDown != gInput.mMouseButtons[button].mWasDown) {
+        return gInput.mMouseButtons[button].mIsDown; 
+    }
+    return false;
+}
+
+bool MouseGetButtonJustUp(int button) {
+    if(gInput.mMouseButtons[button].mIsDown != gInput.mMouseButtons[button].mWasDown) {
+        return gInput.mMouseButtons[button].mWasDown; 
+    }
+    return false;
+}
+
+bool MouseGetButtonUp(int button) {
+    return !gInput.mMouseButtons[button].mIsDown;
+}
+
+int MouseGetCursorX() {
+    return gInput.mMouseX;
+}
+int MouseGetCursorY() {
+    return gInput.mMouseY;
+}
+
+bool JoysickGetButtonDown(int button) {
+    return gInput.mJoyButtons[button].mIsDown;
+}
+
+bool JoysickGetButtonJustDown(int button) {
+    if(gInput.mJoyButtons[button].mIsDown != gInput.mJoyButtons[button].mWasDown) {
+        return gInput.mJoyButtons[button].mIsDown; 
+    }
+    return false;
+}
+
+bool JoysickGetButtonJustUp(int button) {
+    if(gInput.mJoyButtons[button].mIsDown != gInput.mJoyButtons[button].mWasDown) {
+        return gInput.mJoyButtons[button].mWasDown; 
+    }
+    return false;
+}
+
+bool JoysickGetButtonUp(int button) {
+    return !gInput.mJoyButtons[button].mIsDown;
+}
+
+float JoysickGetLeftStickX() {
+    return gInput.mLeftStickX;
+}
+
+float JoysickGetLeftStickY() {
+    return gInput.mLeftStickY;
+}
+
+float JoysickGetRightStickX() {
+    return gInput.mRightStickX;
+}
+
+float JoysickGetRightStickY() {
+    return gInput.mRightStickY;
 }

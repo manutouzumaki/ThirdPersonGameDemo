@@ -4,6 +4,7 @@
 #include "Mat4.h"
 #include "Transform.h"
 #include "Slotmap.h"
+#include "Input.h"
 
 #include <stdio.h>
 #include <cmath>
@@ -107,9 +108,15 @@ void Game::Initialize() {
 }
 
 void Game::Update(float dt) {
+    
     mPlayback = mClips[2].Sample(mAnimatedPose, mPlayback + dt); 
     mAnimatedPose.GetMatrixPalette(mPosePalette);
     mShader.UpdateMat4Array("pose", (int)mPosePalette.size(), &mPosePalette[0]);
+    
+    float leftStickX = JoysickGetLeftStickX();
+    float leftStickY = JoysickGetLeftStickY();
+    printf("X: %f  Y: %f\n", leftStickX, leftStickY);
+
 }
 
 void Game::Render() {
