@@ -1,8 +1,30 @@
 #include <windows.h>
+#include <Windowsx.h>
+#include <xinput.h>
 #include <glad/glad.h>
 #include <stdio.h>
 
+#include "Defines.h"
 #include "Game.h"
+#include "Input.h"
+
+
+static bool gRunning;
+static Input gInput;
+static WORD XInputButtons[] = 
+{
+    XINPUT_GAMEPAD_DPAD_UP,
+    XINPUT_GAMEPAD_DPAD_DOWN,
+    XINPUT_GAMEPAD_DPAD_LEFT,
+    XINPUT_GAMEPAD_DPAD_RIGHT,
+    XINPUT_GAMEPAD_START,
+    XINPUT_GAMEPAD_BACK,
+    XINPUT_GAMEPAD_A,
+    XINPUT_GAMEPAD_B,
+    XINPUT_GAMEPAD_X,
+    XINPUT_GAMEPAD_Y
+};
+
 
 #if _APP_DEBUG
     #pragma comment ( linker, "/subsystem:console" )
@@ -36,6 +58,119 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam) {
         }break;
     }
     return DefWindowProc(hwnd, iMsg, wParam, lParam);
+}
+
+static float ProcessXInputStick(WORD value, int deadZoneValue)
+{
+    float result = 0;
+    if(value < -deadZoneValue)
+    {
+        result = (float)(value + deadZoneValue) / (32768.0f - deadZoneValue);
+    }
+    else if(value > deadZoneValue)
+    {
+        result = (float)(value - deadZoneValue) / (32767.0f - deadZoneValue);
+    }
+    return result;
+}
+
+static void ProcessInputAndMessages(Input *lastInput) {
+    MSG msg = {};
+    while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        switch(msg.message)
+        {
+            case WM_QUIT: {
+                gRunning = false;      
+            } break;
+            case WM_KEYDOWN:
+            case WM_SYSKEYDOWN:
+            case WM_KEYUP:
+            case WM_SYSKEYUP: { 
+                bool wasDown = ((msg.lParam & (1 << 30)) != 0);
+                bool isDown = ((msg.lParam & (1 << 31)) == 0);
+                if(isDown != wasDown) {
+                    DWORD vkCode = (DWORD)msg.wParam;
+                    gInput.mKeys[vkCode].mIsDown = isDown;
+                }
+            }break;
+            case WM_MOUSEMOVE: {
+                gInput.mMouseX = (int)GET_X_LPARAM(msg.lParam); 
+                gInput.mMouseY = (int)GET_Y_LPARAM(msg.lParam); 
+            }break;
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONUP:
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONUP:
+            case WM_MBUTTONDOWN:
+            case WM_MBUTTONUP: {
+                gInput.mMouseLeft.mIsDown = ((msg.wParam & MK_LBUTTON) != 0);
+                gInput.mMouseMiddle.mIsDown = ((msg.wParam & MK_MBUTTON) != 0);
+                gInput.mMouseRight.mIsDown = ((msg.wParam & MK_RBUTTON) != 0);
+            }break;
+            default: {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }break;
+        } 
+    }
+
+    XINPUT_STATE state = {};
+    if(XInputGetState(0, &state) == ERROR_SUCCESS)
+    {
+        XINPUT_GAMEPAD *pad = &state.Gamepad;
+        for(int i = 0; i < ArrayCount(gInput.mJoyButtons); ++i)
+        {
+            gInput.mJoyButtons[i].mIsDown = pad->wButtons & XInputButtons[i];
+        }
+        gInput.mLeftStickX =  ProcessXInputStick(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+        gInput.mLeftStickY =  ProcessXInputStick(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+        gInput.mRightStickX = ProcessXInputStick(pad->sThumbRX, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+        gInput.mRightStickY = ProcessXInputStick(pad->sThumbRY, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+    }
+    else
+    {
+        for(int i = 0; i < ArrayCount(gInput.mJoyButtons); ++i)
+        {
+            gInput.mJoyButtons[i].mIsDown = false;
+        }
+        gInput.mLeftStickX = 0.0f; 
+        gInput.mLeftStickY = 0.0f;
+        gInput.mRightStickX = 0.0f;
+        gInput.mRightStickY = 0.0f;
+    }
+
+    
+    for(int i = 0; i < ArrayCount(gInput.mKeys); ++i) {
+        if(lastInput->mKeys[i].mIsDown) {
+            gInput.mKeys[i].mWasDown = true;
+        }
+        else {
+            gInput.mKeys[i].mWasDown = false; 
+        }
+    }
+    for(int i = 0; i < ArrayCount(gInput.mMouseButtons); ++i) {
+        if(lastInput->mMouseButtons[i].mIsDown) {
+            gInput.mMouseButtons[i].mWasDown = true;
+        }
+        else {
+            gInput.mMouseButtons[i].mWasDown = false; 
+        }
+    }
+    for(int i = 0; i < ArrayCount(gInput.mJoyButtons); ++i) {
+        if(lastInput->mJoyButtons[i].mIsDown) {
+            gInput.mJoyButtons[i].mWasDown = true;
+        }
+        else {
+            gInput.mJoyButtons[i].mWasDown = false; 
+        }
+    }
+
+    if(gInput.mJoyA.mIsDown != gInput.mJoyA.mWasDown) {
+        if(gInput.mJoyA.mIsDown) {
+            printf("A press\n");
+        }
+    }
+
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
@@ -152,23 +287,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
     LARGE_INTEGER lastCounter = {};
     QueryPerformanceCounter(&lastCounter);
+    
+    gRunning = true;
+   
+    Input lastInput = {};
 
-    MSG msg;
-    while(true) {
-        if(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-            if(msg.message == WM_QUIT) {
-                break;
-            }
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
+    while(gRunning) {
+
+        ProcessInputAndMessages(&lastInput);
+
         LARGE_INTEGER currentCounter = {};
         QueryPerformanceCounter(&currentCounter);
 
-        double fps = (double)frequency.QuadPart / (double)(currentCounter.QuadPart - lastCounter.QuadPart);
+        //double fps = (double)frequency.QuadPart / (double)(currentCounter.QuadPart - lastCounter.QuadPart);
         float dt = (float)((double)(currentCounter.QuadPart - lastCounter.QuadPart) / (double)frequency.QuadPart);
         
-        printf("FPS: %lf\n", fps);
+        //printf("FPS: %lf\n", fps);
 
         game.Update(dt);
 
@@ -183,6 +317,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         }
 
         lastCounter = currentCounter;
+        lastInput = gInput;
     }
 
     game.Shutdown();
@@ -191,5 +326,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     wglDeleteContext(hglrc);
     ReleaseDC(hwnd, hdc);
     
-    return (int)msg.wParam;
+    return 0;
 }

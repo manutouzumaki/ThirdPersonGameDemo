@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <cmath>
 
+#include <assert.h>
+
 #define TO_RAD(value) ((value)*(3.14159265359f/180.0f))
 
 void Game::Initialize() {
@@ -30,7 +32,6 @@ void Game::Initialize() {
     mPlayback = 0.0f;
     mAnimatedPose = mRestPose;
     
-
     FreeGLTFFile(CloneModel);
     
     // Set Uniforms
@@ -87,6 +88,7 @@ void Game::Initialize() {
     SlotmapKey juanaKey = slotmap.AddComponent(transformJuana);
 
     TransformComponent manu = slotmap.GetComponent(manuKey);
+
 
     slotmap.RemoveComponent(pabloKey);
     slotmap.RemoveComponent(manuKey);

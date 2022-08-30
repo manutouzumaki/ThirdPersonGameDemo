@@ -20,6 +20,7 @@ void TransformSlotmap::Initialize() {
 SlotmapKey TransformSlotmap::AddComponent(TransformComponent component) {
     assert(mCount < 100);
     assert(mGeneration < MAX_UNSIGNED_INT);
+    assert(mFreeList < 100);
     unsigned int index = mFreeList;
     SlotmapKey *key = mIndices + index;
     mFreeList = key->mId;
@@ -39,23 +40,21 @@ void TransformSlotmap::RemoveComponent(SlotmapKey key) {
         assert(!"try to delete a entity already gone");
     }
     
-    unsigned int lastNextFree = mFreeList;
-    mFreeList = key.mId;
-    mIndices[key.mId].mId = lastNextFree;
+    mIndices[key.mId].mId = mFreeList;
     mIndices[key.mId].mGen = MAX_UNSIGNED_INT;
+    mFreeList = key.mId;
 
     // TODO: now we need to delete the actual data
     unsigned int dataIndex = internalKey.mId;
-
-    // delete the element
-    mData[dataIndex] = mData[mCount - 1];
-    mErase[dataIndex] = mErase[mCount - 1];
     
-    // update the modify element
-    unsigned int indiceToUpdate = mErase[dataIndex];
-    mIndices[indiceToUpdate].mId = dataIndex;
-    mCount--;
-
+    if(dataIndex != mCount - 1) {
+        // delete the element
+        mData[dataIndex] = mData[mCount - 1];
+        mErase[dataIndex] = mErase[mCount - 1]; 
+        // update the modify element
+        mIndices[mErase[dataIndex]].mId = dataIndex;
+    }
+    --mCount;
 }
 
 TransformComponent TransformSlotmap::GetComponent(SlotmapKey key) {
