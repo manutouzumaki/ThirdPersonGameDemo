@@ -12,10 +12,10 @@ uniform sampler2D tex1;
 out vec4 FragColor;
 
 void main() {
-    vec2 testUvs = uv;
-    testUvs.x *= 10.0f;
-    testUvs.y *= 10.0f;
-    vec4 diffuseColor = texture(tex0, testUvs);
+    vec2 scaleUvs = uv;
+    scaleUvs.x *= 100.0f;
+    scaleUvs.y *= 100.0f;
+    vec4 diffuseColor = texture(tex0, scaleUvs) - vec4(0.1, 0.2, 0.2, 0);
 
 	vec3 n = normalize(norm);
 	vec3 l = normalize(light);

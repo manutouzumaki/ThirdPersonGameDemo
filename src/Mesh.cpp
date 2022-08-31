@@ -349,10 +349,6 @@ void Mesh::InitializeCube() {
     glEnableVertexAttribArray(2);
 }
 
-void Mesh::InitializeSphere() {
-
-}
-
 void Mesh::Shutdown() {
     if(glIsVertexArray(mVao)) {
         glDeleteVertexArrays(1, &mVao);

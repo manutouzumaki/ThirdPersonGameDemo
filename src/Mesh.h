@@ -16,7 +16,7 @@ struct Mesh {
     void InitializeStatic(cgltf_data *data);
     void InitializeAnimated(cgltf_data *data);
     void InitializeCube();
-    void InitializeSphere();
+    
     void Shutdown();
     void Bind();
     void Unbind();

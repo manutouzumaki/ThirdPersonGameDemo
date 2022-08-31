@@ -14,10 +14,12 @@ struct Game {
     Renderer mRenderer;
     Shader mShader;
     Shader mStaticShader;
+    Shader mCubemapShader;
     Mesh mMesh;
 
     Texture mTexture;
     Texture mGrassTexture;
+    Texture mCubemap;
 
     Mesh mTest;
     Pose mRestPose;
@@ -37,8 +39,6 @@ struct Game {
     float mCloneRotOffset;
     bool mCloneJumping;
     
-    
-
     void Initialize();
     void Update(float dt);
     void Render();

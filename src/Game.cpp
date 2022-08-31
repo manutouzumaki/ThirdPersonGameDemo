@@ -10,14 +10,27 @@
 #include <cmath>
 
 #include <assert.h>
+#include <glad/glad.h>
 
 void Game::Initialize() {
     // Initialize
     mRenderer.Initialize();
     mShader.Initialize("../src/shaders/Vertex.glsl", "../src/shaders/Fragment.glsl");
     mStaticShader.Initialize("../src/shaders/StaticVertex.glsl", "../src/shaders/StaticFragment.glsl");
+    mCubemapShader.Initialize("../src/shaders/CubemapVertex.glsl", "../src/shaders/CubemapFragment.glsl");
     
-    mGrassTexture.Initialize("../assets/grass/TexturesCom_Ground_Grass01_2x2_512_albedo.png");
+    mGrassTexture.Initialize("../assets/grass/TexturesCom_Ground_Grass01_2x2_512_translucency.png");
+    const char *faces[] = {
+        "../assets/red/bkg1_right1.png",
+        "../assets/red/bkg1_left2.png",
+        "../assets/red/bkg1_top3.png",
+        "../assets/red/bkg1_bottom4.png",
+        "../assets/red/bkg1_front5.png",
+        "../assets/red/bkg1_back6.png"
+    };
+    mCubemap.InitializeCubemap(faces);
+    
+    
     mMesh.InitializeCube();
 
 
@@ -37,7 +50,7 @@ void Game::Initialize() {
     FreeGLTFFile(CloneModel);
     
     // Set Uniforms
-    mat4 projection = perspective(60.0f, 800.0f/600.0f, 0.01f, 1000.0f);
+    mat4 projection = perspective(60.0f, 1920.0f/1080.0f, 0.01f, 100.0f);
     mShader.UpdateMat4("projection", projection);
     mCamera.Initialize(vec3(0, 6, -10), vec3(0, 3, 0));
     
@@ -52,12 +65,14 @@ void Game::Initialize() {
     
     Transform floorModel;
     floorModel.mPosition = vec3(0, 0, 0);
-    floorModel.mScale = vec3(50.0f, 1.0f, 50.0f);
+    floorModel.mScale = vec3(1000.0f, 1.0f, 1000.0f);
     floorModel.mRotation = angleAxis(TO_RAD(0.0f), vec3(0, 1, 0));
+    mStaticShader.UpdateMat4("model", transformToMat4(floorModel));
 
     mStaticShader.UpdateMat4("projection", projection);
-    mStaticShader.UpdateMat4("model", transformToMat4(floorModel));
     mStaticShader.UpdateVec3("light", vec3(0, 8, -1));     
+    
+    mCubemapShader.UpdateMat4("projection", projection);
 
     mCamera.UpdateFollowCamera(&mCloneTransform);
     mCamera.UpdateCameraInShader(&mShader);
@@ -69,12 +84,16 @@ void Game::Initialize() {
     mCloneRotation = TO_RAD(-90.0f);
     mCloneRotOffset = 0.0f;
     
+
+    mCubemapShader.UpdateMat4("model", mat4());
 }
+
 
 void Game::Update(float dt) {
     mCamera.UpdateFollowCamera(&mCloneTransform);
     mCamera.UpdateCameraInShader(&mShader);
     mCamera.UpdateCameraInShader(&mStaticShader);
+    mCamera.UpdateCameraInShader(&mCubemapShader);
 
 
     mPlayback = mClips[mCurrentAnim].Sample(mAnimatedPose, mPlayback + dt); 
@@ -144,11 +163,27 @@ void Game::Update(float dt) {
     mCloneTransform.mRotation = angleAxis(-(mCloneRotation + TO_RAD(90.0f + mCloneRotOffset)), vec3(0, 1, 0));
     mShader.UpdateMat4("model", transformToMat4(mCloneTransform));
 
-
+    
+    static float cubemapTimer = 0.0f;
+    Transform cubemapTransform;
+    cubemapTransform.mRotation = angleAxis(cubemapTimer, vec3(0, 1, 0));
+    mCubemapShader.UpdateMat4("model", transformToMat4(cubemapTransform));
+    cubemapTimer += dt * 0.02f;
 
 }
 
 void Game::Render() {
+
+#if 1
+    glDisable(GL_DEPTH_TEST);
+    mCubemap.Bind(&mCubemapShader, "cubemap", 0);
+    mMesh.Bind();
+    mCubemapShader.Bind();
+    mRenderer.DrawArray(mMesh.mVerticesCount);
+    glEnable(GL_DEPTH_TEST);
+#endif
+
+
     mTexture.Bind(&mShader, "tex0", 0);
     mTest.Bind();
     mShader.Bind();
@@ -168,10 +203,12 @@ void Game::Shutdown() {
     mShader.Unbind();
     
     mMesh.Shutdown();
+    mCubemap.Shutdown();
     mTexture.Shutdown();
     mGrassTexture.Shutdown();
     mTest.Shutdown();
     mStaticShader.Shutdown();
+    mCubemapShader.Shutdown();
     mShader.Shutdown();
     mRenderer.Shutdown();
 }

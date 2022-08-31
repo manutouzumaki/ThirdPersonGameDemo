@@ -17,6 +17,29 @@ void Texture::Initialize(const char *path) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+
+void Texture::InitializeCubemap(const char **faces) {
+    glGenTextures(1, &mHandle);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, mHandle);
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    int width, height, components;
+    for(int index = 0; index < 6; ++index) {
+        const char *path = faces[index];
+        unsigned char *data = stbi_load(path, &width, &height, &components, 0);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + index, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        stbi_image_free(data);
+    }
+    mWidth = width;
+    mHeight = height;
+    mChannels = components;
+}
+
 void Texture::Shutdown() {
     glDeleteTextures(1, &mHandle);
 }

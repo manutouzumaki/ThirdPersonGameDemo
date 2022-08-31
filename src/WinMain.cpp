@@ -196,8 +196,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	
     int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-    int clientWidth = 800;
-    int clientHeight = 600;
+    int clientWidth = 1920;
+    int clientHeight = 1080;
     RECT windowRect = {};
     SetRect(&windowRect,
             (screenWidth / 2) - (clientWidth / 2),
@@ -260,7 +260,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     if(swapControlSupported) {
         PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
         PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
-        if(wglSwapIntervalEXT(0)) {
+        if(wglSwapIntervalEXT(1)) {
             printf("Enabled vsynch\n");
             vsynch = wglGetSwapIntervalEXT();
         } else {
@@ -302,10 +302,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         LARGE_INTEGER currentCounter = {};
         QueryPerformanceCounter(&currentCounter);
 
-        //double fps = (double)frequency.QuadPart / (double)(currentCounter.QuadPart - lastCounter.QuadPart);
+        double fps = (double)frequency.QuadPart / (double)(currentCounter.QuadPart - lastCounter.QuadPart);
         float dt = (float)((double)(currentCounter.QuadPart - lastCounter.QuadPart) / (double)frequency.QuadPart);
         
-        //printf("FPS: %lf\n", fps);
+        printf("FPS: %lf\n", fps);
 
         game.Update(dt);
 

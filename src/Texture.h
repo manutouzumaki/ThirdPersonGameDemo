@@ -10,6 +10,7 @@ struct Texture {
     int mChannels;
 
     void Initialize(const char *path);
+    void InitializeCubemap(const char **faces);
     void Shutdown();
     void Bind(Shader *shader, const char *varName, unsigned int textureIndex);
     void Unbind(unsigned textureIndex);
