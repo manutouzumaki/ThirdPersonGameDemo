@@ -7,13 +7,17 @@
 #include "Texture.h"
 #include "Skeleton.h"
 #include "Clip.h"
+#include "Transform.h"
+#include "Camera.h"
 
 struct Game {
     Renderer mRenderer;
     Shader mShader;
+    Shader mStaticShader;
     Mesh mMesh;
 
     Texture mTexture;
+    Texture mGrassTexture;
 
     Mesh mTest;
     Pose mRestPose;
@@ -23,6 +27,15 @@ struct Game {
     std::vector<Clip> mClips;
     float mPlayback;
     Pose mAnimatedPose;
+
+    Camera mCamera;
+    unsigned int mCurrentAnim;
+    Transform mCloneTransform;
+    vec3 mCloneDirection;
+    vec3 mCloneRight;
+    float mCloneRotation;
+    float mCloneRotOffset;
+    
     
 
     void Initialize();

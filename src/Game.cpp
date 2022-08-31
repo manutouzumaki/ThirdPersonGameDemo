@@ -2,27 +2,28 @@
 
 #include "Vec3.h"
 #include "Mat4.h"
-#include "Transform.h"
 #include "Slotmap.h"
 #include "Input.h"
+#include "Defines.h"
 
 #include <stdio.h>
 #include <cmath>
 
 #include <assert.h>
 
-#define TO_RAD(value) ((value)*(3.14159265359f/180.0f))
-
 void Game::Initialize() {
     // Initialize
     mRenderer.Initialize();
     mShader.Initialize("../src/shaders/Vertex.glsl", "../src/shaders/Fragment.glsl");
+    mStaticShader.Initialize("../src/shaders/StaticVertex.glsl", "../src/shaders/StaticFragment.glsl");
+    
+    mGrassTexture.Initialize("../assets/grass/TexturesCom_Ground_Grass01_2x2_512_albedo.png");
     mMesh.InitializeCube();
 
 
     // TODO: load animated model
     mTexture.Initialize("../assets/clone/textures/Stormtroopermat_baseColor.png");
-    cgltf_data *CloneModel = LoadGLTFFile("../assets/cloneAnims/clone.gltf"); 
+    cgltf_data *CloneModel = LoadGLTFFile("../assets/clone2/clone.gltf"); 
     //mTexture.Initialize("../assets/Woman.png");
     //cgltf_data *CloneModel = LoadGLTFFile("../assets/Woman.gltf");
     mTest.InitializeAnimated(CloneModel);
@@ -38,89 +39,109 @@ void Game::Initialize() {
     // Set Uniforms
     mat4 projection = perspective(60.0f, 800.0f/600.0f, 0.01f, 1000.0f);
     mShader.UpdateMat4("projection", projection);
-    mat4 view = lookAt(vec3(0, 0, 5), vec3(0, 0, 0), vec3(0, 1, 0));
-    mShader.UpdateMat4("view", view);
-    Transform model;
-    model.mPosition = vec3(0, -2, 0);
-    model.mScale = vec3(1.0f, 1.0f, 1.0f);
-    model.mRotation = angleAxis(TO_RAD(0.0f), vec3(0, 1, 0)); 
-    mShader.UpdateMat4("model", transformToMat4(model));
-    mShader.UpdateVec3("light", vec3(0.5f, 1, 1));     
-
-    mShader.Bind();
+    mCamera.Initialize(vec3(0, 6, -10), vec3(0, 3, 0));
+    
+    mCloneTransform.mPosition = vec3(0, 0.5f, 0);
+    mCloneTransform.mScale = vec3(1.0f, 1.0f, 1.0f);
+    mCloneTransform.mRotation = angleAxis(TO_RAD(0.0f), vec3(0, 1, 0)); 
+    mShader.UpdateMat4("model", transformToMat4(mCloneTransform));
+    mShader.UpdateVec3("light", vec3(0, 8, -1));     
     mTexture.Bind(&mShader, "tex0", 0);
-    mTest.Bind();
 
     mShader.UpdateMat4Array("invBindPose", (int)mSkeleton.mInvBindPose.size(), &mSkeleton.mInvBindPose[0]);
     
+    Transform floorModel;
+    floorModel.mPosition = vec3(0, 0, 0);
+    floorModel.mScale = vec3(50.0f, 1.0f, 50.0f);
+    floorModel.mRotation = angleAxis(TO_RAD(0.0f), vec3(0, 1, 0));
 
+    mStaticShader.UpdateMat4("projection", projection);
+    mStaticShader.UpdateMat4("model", transformToMat4(floorModel));
+    mStaticShader.UpdateVec3("light", vec3(0, 8, -1));     
 
-    // TODO: Slotmap Test ...
-    TransformSlotmap slotmap;
-    slotmap.Initialize();
+    mCamera.UpdateFollowCamera(&mCloneTransform);
+    mCamera.UpdateCameraInShader(&mShader);
+    mCamera.UpdateCameraInShader(&mStaticShader);
 
-
-    TransformComponent transformManu = {
-        "manu", vec3(24, 24, 24)
-    };
-    TransformComponent transformTomi = {
-        "tomi", vec3(24, 24, 24)
-    };
-    TransformComponent transformGonza = {
-        "gonza", vec3(18, 18, 18)
-    };
-    TransformComponent transformJuana = {
-        "juana", vec3(22, 22, 22)
-    };
-    TransformComponent transformLaura = {
-        "laura", vec3(54, 54, 54)
-    };
-    TransformComponent transformPablo = {
-        "pablo", vec3(54, 54, 54)
-    };
-    TransformComponent transformIndia = {
-        "india", vec3(15, 15, 15)
-    };
-
-
-    SlotmapKey indiaKey = slotmap.AddComponent(transformIndia);
-    SlotmapKey manuKey = slotmap.AddComponent(transformManu);
-    SlotmapKey pabloKey = slotmap.AddComponent(transformPablo);
-    SlotmapKey juanaKey = slotmap.AddComponent(transformJuana);
-
-    TransformComponent manu = slotmap.GetComponent(manuKey);
-
-
-    slotmap.RemoveComponent(pabloKey);
-    slotmap.RemoveComponent(manuKey);
-    SlotmapKey tomiKey = slotmap.AddComponent(transformTomi);
-    slotmap.RemoveComponent(juanaKey);
-     
-    manuKey = slotmap.AddComponent(transformManu);
-
-    TransformComponent tomi = slotmap.GetComponent(tomiKey);
-    TransformComponent manuAfter = slotmap.GetComponent(manuKey);
-    TransformComponent india = slotmap.GetComponent(indiaKey);
-
-
-     int StopHere = 0;
-    (void)StopHere;
+    mCurrentAnim = 1;
+    mCloneDirection = vec3(0, 0, 1);
+    mCloneRight = vec3(1, 0, 0);
+    mCloneRotation = TO_RAD(-90.0f);
+    mCloneRotOffset = 0.0f;
+    
 }
 
 void Game::Update(float dt) {
+    mCamera.UpdateFollowCamera(&mCloneTransform);
+    mCamera.UpdateCameraInShader(&mShader);
+    mCamera.UpdateCameraInShader(&mStaticShader);
+
+
+    mPlayback = mClips[mCurrentAnim].Sample(mAnimatedPose, mPlayback + dt); 
     
-    mPlayback = mClips[2].Sample(mAnimatedPose, mPlayback + dt); 
     mAnimatedPose.GetMatrixPalette(mPosePalette);
     mShader.UpdateMat4Array("pose", (int)mPosePalette.size(), &mPosePalette[0]);
+
+
+    // TODO improve this a lot....
+    if(MouseGetButtonDown(MOUSE_BUTTON_RIGHT)) {
+        mCloneRotOffset = 0.0f;
+        mCloneDirection = normalized(vec3(mCamera.mFront.x, 0.0f, mCamera.mFront.z));
+        mCloneRight = normalized(cross(vec3(0, 1, 0), mCloneDirection));
+        mCloneRotation = mCamera.mYaw;
     
-    float leftStickX = JoysickGetLeftStickX();
-    float leftStickY = JoysickGetLeftStickY();
-    printf("X: %f  Y: %f\n", leftStickX, leftStickY);
+        if(MouseGetButtonDown(MOUSE_BUTTON_LEFT)) {
+            mCurrentAnim = 3;
+            mCloneTransform.mPosition = mCloneTransform.mPosition + (mCloneDirection * 4.0f) * dt;
+        }
+    }
+    if(KeyboardGetKeyDown(KEYBOARD_KEY_W)) {
+        mCloneRotOffset = 0.0f;
+        mCurrentAnim = 3;
+        mCloneTransform.mPosition = mCloneTransform.mPosition + (mCloneDirection * 4.0f) * dt;
+    }
+    if(KeyboardGetKeyDown(KEYBOARD_KEY_S)) {
+        mCurrentAnim = 3;
+        mCloneRotOffset = 180.0f;
+        mCloneTransform.mPosition = mCloneTransform.mPosition - (mCloneDirection * 4.0f) * dt;
+    }
+    if(KeyboardGetKeyDown(KEYBOARD_KEY_A)) { 
+        mCurrentAnim = 3;
+        mCloneRotOffset = -90.0f;
+        mCloneTransform.mPosition = mCloneTransform.mPosition + (mCloneRight * 4.0f) * dt;
+    }
+    if(KeyboardGetKeyDown(KEYBOARD_KEY_D)) {
+        mCurrentAnim = 3;
+        mCloneRotOffset = 90.0f;
+        mCloneTransform.mPosition = mCloneTransform.mPosition - (mCloneRight * 4.0f) * dt; 
+    }
+    if(KeyboardGetKeyUp(KEYBOARD_KEY_W) &&
+       KeyboardGetKeyUp(KEYBOARD_KEY_S) &&
+       KeyboardGetKeyUp(KEYBOARD_KEY_A) &&
+       KeyboardGetKeyUp(KEYBOARD_KEY_D)) {
+        mCurrentAnim = 1;
+    }
+
+    if(MouseGetButtonDown(MOUSE_BUTTON_RIGHT) && MouseGetButtonDown(MOUSE_BUTTON_LEFT)) {
+        mCurrentAnim = 3;
+    }
+    mCloneTransform.mRotation = angleAxis(-(mCloneRotation + TO_RAD(90.0f + mCloneRotOffset)), vec3(0, 1, 0));
+    mShader.UpdateMat4("model", transformToMat4(mCloneTransform));
+
+
 
 }
 
 void Game::Render() {
+    mTexture.Bind(&mShader, "tex0", 0);
+    mTest.Bind();
+    mShader.Bind();
     mRenderer.DrawIndex(mTest.mIndicesCount);
+    
+    mGrassTexture.Bind(&mStaticShader, "tex0", 0);
+    mMesh.Bind();
+    mStaticShader.Bind();
+    mRenderer.DrawArray(mMesh.mVerticesCount);
 }
 
 void Game::Shutdown() {
@@ -128,12 +149,13 @@ void Game::Shutdown() {
     printf("ShutingDown\n");
 
     mTest.Unbind();
-    mTexture.Unbind(0);
     mShader.Unbind();
     
     mMesh.Shutdown();
     mTexture.Shutdown();
+    mGrassTexture.Shutdown();
     mTest.Shutdown();
+    mStaticShader.Shutdown();
     mShader.Shutdown();
     mRenderer.Shutdown();
 }

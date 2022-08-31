@@ -86,6 +86,7 @@ struct Input {
     ButtonState mKeys[350];
     int mMouseX;
     int mMouseY;
+    int mMouseWheel;
 
     float mLeftStickX;
     float mLeftStickY;
@@ -130,6 +131,9 @@ bool MouseGetButtonUp(int button);
 
 int MouseGetCursorX();
 int MouseGetCursorY();
+int MouseGetWheel();
+int MouseGetLastCursorX();
+int MouseGetLastCursorY();
 
 bool JoysickGetButtonDown(int button);
 bool JoysickGetButtonJustDown(int button);

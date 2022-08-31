@@ -11,6 +11,7 @@
 
 static bool gRunning;
 static Input gInput;
+static Input gLastInput;
 static WORD XInputButtons[] = 
 {
     XINPUT_GAMEPAD_DPAD_UP,
@@ -77,6 +78,7 @@ static float ProcessXInputStick(SHORT value, int deadZoneValue)
 }
 
 static void ProcessInputAndMessages(Input *lastInput) {
+    gInput.mMouseWheel = 0;
     MSG msg = {};
     while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
         switch(msg.message)
@@ -109,6 +111,14 @@ static void ProcessInputAndMessages(Input *lastInput) {
                 gInput.mMouseMiddle.mIsDown = ((msg.wParam & MK_MBUTTON) != 0);
                 gInput.mMouseRight.mIsDown = ((msg.wParam & MK_RBUTTON) != 0);
             }break;
+            case WM_MOUSEWHEEL: {
+                int zDelta = GET_WHEEL_DELTA_WPARAM(msg.wParam);
+                if (zDelta != 0) {
+                    // Flatten the input to an OS-independent (-1, 1)
+                    zDelta = (zDelta < 0) ? -1 : 1;
+                    gInput.mMouseWheel = zDelta;
+                }
+            } break;
             default: {
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
@@ -250,7 +260,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     if(swapControlSupported) {
         PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
         PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
-        if(wglSwapIntervalEXT(1)) {
+        if(wglSwapIntervalEXT(0)) {
             printf("Enabled vsynch\n");
             vsynch = wglGetSwapIntervalEXT();
         } else {
@@ -270,7 +280,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
     glViewport(0, 0, clientWidth, clientHeight);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    //glEnable(GL_CULL_FACE);
     glPointSize(5.0f);
 
     LARGE_INTEGER frequency = {};
@@ -285,11 +295,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     
     gRunning = true;
    
-    Input lastInput = {};
-
     while(gRunning) {
 
-        ProcessInputAndMessages(&lastInput);
+        ProcessInputAndMessages(&gLastInput);
 
         LARGE_INTEGER currentCounter = {};
         QueryPerformanceCounter(&currentCounter);
@@ -312,7 +320,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         }
 
         lastCounter = currentCounter;
-        lastInput = gInput;
+        gLastInput = gInput;
     }
 
     game.Shutdown();
@@ -375,6 +383,18 @@ int MouseGetCursorX() {
 }
 int MouseGetCursorY() {
     return gInput.mMouseY;
+}
+
+int MouseGetWheel() {
+    return gInput.mMouseWheel;
+}
+
+int MouseGetLastCursorX() {
+    return gLastInput.mMouseX;
+}
+
+int MouseGetLastCursorY() {
+    return gLastInput.mMouseY;
 }
 
 bool JoysickGetButtonDown(int button) {
