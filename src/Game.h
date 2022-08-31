@@ -35,6 +35,7 @@ struct Game {
     vec3 mCloneRight;
     float mCloneRotation;
     float mCloneRotOffset;
+    bool mCloneJumping;
     
     
 

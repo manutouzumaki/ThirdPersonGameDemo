@@ -90,27 +90,27 @@ void Game::Update(float dt) {
         mCloneRight = normalized(cross(vec3(0, 1, 0), mCloneDirection));
         mCloneRotation = mCamera.mYaw;
     
-        if(MouseGetButtonDown(MOUSE_BUTTON_LEFT)) {
+        if(MouseGetButtonDown(MOUSE_BUTTON_LEFT) && mCloneJumping == false) {
             mCurrentAnim = 3;
             mCloneTransform.mPosition = mCloneTransform.mPosition + (mCloneDirection * 4.0f) * dt;
         }
     }
-    if(KeyboardGetKeyDown(KEYBOARD_KEY_W)) {
+    if(KeyboardGetKeyDown(KEYBOARD_KEY_W) && mCloneJumping == false) {
         mCloneRotOffset = 0.0f;
         mCurrentAnim = 3;
         mCloneTransform.mPosition = mCloneTransform.mPosition + (mCloneDirection * 4.0f) * dt;
     }
-    if(KeyboardGetKeyDown(KEYBOARD_KEY_S)) {
+    if(KeyboardGetKeyDown(KEYBOARD_KEY_S) && mCloneJumping == false) {
         mCurrentAnim = 3;
         mCloneRotOffset = 180.0f;
         mCloneTransform.mPosition = mCloneTransform.mPosition - (mCloneDirection * 4.0f) * dt;
     }
-    if(KeyboardGetKeyDown(KEYBOARD_KEY_A)) { 
+    if(KeyboardGetKeyDown(KEYBOARD_KEY_A) && mCloneJumping == false) { 
         mCurrentAnim = 3;
         mCloneRotOffset = -90.0f;
         mCloneTransform.mPosition = mCloneTransform.mPosition + (mCloneRight * 4.0f) * dt;
     }
-    if(KeyboardGetKeyDown(KEYBOARD_KEY_D)) {
+    if(KeyboardGetKeyDown(KEYBOARD_KEY_D) && mCloneJumping == false) {
         mCurrentAnim = 3;
         mCloneRotOffset = 90.0f;
         mCloneTransform.mPosition = mCloneTransform.mPosition - (mCloneRight * 4.0f) * dt; 
@@ -118,13 +118,29 @@ void Game::Update(float dt) {
     if(KeyboardGetKeyUp(KEYBOARD_KEY_W) &&
        KeyboardGetKeyUp(KEYBOARD_KEY_S) &&
        KeyboardGetKeyUp(KEYBOARD_KEY_A) &&
-       KeyboardGetKeyUp(KEYBOARD_KEY_D)) {
+       KeyboardGetKeyUp(KEYBOARD_KEY_D) &&
+       mCloneJumping == false) {
         mCurrentAnim = 1;
     }
-
     if(MouseGetButtonDown(MOUSE_BUTTON_RIGHT) && MouseGetButtonDown(MOUSE_BUTTON_LEFT)) {
         mCurrentAnim = 3;
     }
+
+    static float timer = 0.0f;
+    if(KeyboardGetKeyJustDown(KEYBOARD_KEY_SPACE) && timer == 0.0f) {
+        mCloneJumping = true;
+        mPlayback = 0.0f;
+    }
+    if(mCloneJumping) {
+        mCurrentAnim = 2;
+        timer += dt; 
+    }
+
+    if(timer > 2.4f) {
+        mCloneJumping = false;
+        timer = 0.0f;
+    }
+
     mCloneTransform.mRotation = angleAxis(-(mCloneRotation + TO_RAD(90.0f + mCloneRotOffset)), vec3(0, 1, 0));
     mShader.UpdateMat4("model", transformToMat4(mCloneTransform));
 
