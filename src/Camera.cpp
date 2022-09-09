@@ -53,9 +53,11 @@ void Camera::UpdateFollowCamera(Transform *target) {
     }
 
     mPosition = (target->mPosition + vec3(0, 3, 0)) - (mFront * mDistance);
+#if 1
     if(mPosition.y <= 0.5f) {
         mPosition.y = 0.5f;
     }
+#endif
 }
 
 void Camera::UpdateCameraInShader(Shader *shader) {

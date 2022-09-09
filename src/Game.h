@@ -20,6 +20,8 @@ struct Game {
     Texture mTexture;
     Texture mGrassTexture;
     Texture mCubemap;
+    Texture mRedTexutre;
+    Texture mGreenTexutre;
 
     Mesh mTest;
     Pose mRestPose;
@@ -38,7 +40,15 @@ struct Game {
     float mCloneRotation;
     float mCloneRotOffset;
     bool mCloneJumping;
-    
+
+    vec3 mCollisionPoint;
+    vec3 mFloorCollisionPont;
+    vec3 mOtherCollisionPoint;
+
+    vec3 mCloneVelocity;
+    vec3 mCloneGravity;
+    bool mCloneIsJumping;
+
     void Initialize();
     void Update(float dt);
     void Render();
