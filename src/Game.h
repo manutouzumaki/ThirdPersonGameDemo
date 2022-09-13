@@ -44,6 +44,7 @@ struct Game {
     vec3 mCollisionPoint;
     vec3 mFloorCollisionPont;
     vec3 mOtherCollisionPoint;
+    vec3 mOBBCollisionPoint;
 
     vec3 mCloneVelocity;
     vec3 mCloneGravity;

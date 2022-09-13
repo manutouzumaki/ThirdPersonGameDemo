@@ -196,8 +196,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	
     int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+#if 0
     int clientWidth = 1920;
     int clientHeight = 1080;
+#else
+    int clientWidth = 1280;
+    int clientHeight = 720;
+#endif
     RECT windowRect = {};
     SetRect(&windowRect,
             (screenWidth / 2) - (clientWidth / 2),
@@ -301,9 +306,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
         LARGE_INTEGER currentCounter = {};
         QueryPerformanceCounter(&currentCounter);
-
+#if 0
         double fps = (double)frequency.QuadPart / (double)(currentCounter.QuadPart - lastCounter.QuadPart);
         printf("FPS: %lf\n", fps);
+#endif
         float dt = (float)((double)(currentCounter.QuadPart - lastCounter.QuadPart) / (double)frequency.QuadPart);
 
         game.Update(dt);

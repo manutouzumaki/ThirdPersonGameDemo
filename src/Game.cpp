@@ -247,7 +247,7 @@ void CovarianceMatrix(float cov[3][3], vec3 pt[], int numPts) {
 
 struct OBB {
     vec3 c;      // OBB center point
-    vec3 u[3];  // Local x-, y- and z-axes
+    vec3 u[3];  // Local x-, y- and z-axes ( have to be normalized )
     vec3 e;      // Positive halfwidth extents of OBB along each axis
 };
 
@@ -275,17 +275,17 @@ float SqDistPointAABB(vec3 p, AABB_min_max b) {
     return sqDist;
 }
 
-vec3 GetAABBNormalFromPoint(vec3 p, AABB_min_max b) {
-    if(p.x == b.max.x) {
+vec3 GetAABBNormalFromPoint(vec3 p, AABB_min_max b, float playerY) {
+    if(p.x == b.max.x && playerY != b.max.y) {
         return vec3(1, 0, 0);
     }
-    else if(p.x == b.min.x) {
+    else if(p.x == b.min.x && playerY != b.max.y) {
         return vec3(-1, 0, 0);
     }
-    if(p.z == b.max.z) {
+    if(p.z == b.max.z && playerY != b.max.y) {
         return vec3(0, 0, 1);
     }
-    else if(p.z == b.min.z) {
+    else if(p.z == b.min.z && playerY != b.max.y) {
         return vec3(0, 0, -1);
     }
     if(p.y == b.max.y) {
@@ -306,10 +306,72 @@ vec3 ClosestPtPointPlane(vec3 q, Plane plane)
     return r;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
+float SqDistPointOBB(vec3 p, OBB b) {
+    vec3 v = p - b.c;
+    float sqDist = 0.0f;
+    for(int i = 0; i < 3; ++i) {
+        // Project vector from box center to p on each axis, getting the distance
+        // of p along that axis, and count any excess distance outside box extends
+        float d = dot(v, b.u[i]), excess = 0.0f;
+        if(d < -b.e.v[i]) {
+            excess = d + b.e.v[i];
+        }
+        else if (d > b.e.v[i]) {
+            excess = d - b.e.v[i];
+        }
+        sqDist += excess * excess;
+    }
+    return sqDist;
+}
+
+void ClosestPtPointOBB(vec3 p, OBB b, vec3 &q) {
+    vec3 d = p - b.c;
+    // start result at center of the box; make steps from there
+    q = b.c;
+    // For each OBB axis...
+    for(int i = 0; i < 3; ++i) {
+        // project d onto that axis to get the distance
+        // along the axis of d from the box center
+        float dist = dot(d, b.u[i]);
+        if(dist > b.e.v[i]) dist = b.e.v[i];
+        if(dist < -b.e.v[i]) dist = -b.e.v[i];
+        // Step that distance along the axis to get world coordinate
+        q = q + b.u[i] * dist;
+    }
+}
+
+vec3 GetOBBNormalFromPoint(vec3 p, OBB b, float playerY) {
+
+    vec3 pRel = p - b.c;
+    float xDot = round(dot(pRel, b.u[0]));
+    if(xDot == b.e.x && playerY != b.c.y + b.e.y) {
+        return b.u[0];
+    }
+    else if(xDot == -b.e.x && playerY != b.c.y + b.e.y) {
+        return b.u[0] * -1.0f;
+    }
+
+    float zDot = round(dot(pRel, b.u[2]));
+    if(zDot == b.e.z && playerY != b.c.y + b.e.y) {
+        return b.u[2];
+    }
+    else if(zDot == -b.e.z && playerY != b.c.y + b.e.y) {
+        return b.u[2] * -1.0f;
+    }
+
+    float yDot = round(dot(pRel, b.u[1]));
+    if(yDot == b.e.y) {
+        return b.u[1];
+    }
+    else if(yDot == -b.e.y) {
+        return b.u[1] * -1.0f;
+    }
+    return vec3();
+}
 
 
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -354,7 +416,12 @@ void Game::Initialize() {
     FreeGLTFFile(CloneModel);
     
     // Set Uniforms
+#if 0
     mat4 projection = perspective(60.0f, 1920.0f/1080.0f, 0.01f, 100.0f);
+#else
+    mat4 projection = perspective(60.0f, 1280.0f/720.0f, 0.01f, 100.0f);
+#endif
+
     mShader.UpdateMat4("projection", projection);
     mCamera.Initialize(vec3(0, 6, -10), vec3(0, 3, 0));
     
@@ -475,6 +542,7 @@ void Game::Update(float dt) {
     mCloneTransform.mPosition = mCloneTransform.mPosition + mCloneVelocity * dt;
 
     // TODO: try to create a first implementation of axis align collision detection and resolution
+    // TODO: try to create a first implementation of oriented bounding box collision detection and resolution
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // Create tha AABB for the cube to be tested
     bool dirtyFlag = false;
@@ -494,7 +562,7 @@ void Game::Update(float dt) {
         }
     }
     if(distanceFromBox <= 0.0f){
-        vec3 collisionNormal = GetAABBNormalFromPoint(mCollisionPoint, greenCubeAABB);
+        vec3 collisionNormal = GetAABBNormalFromPoint(mCollisionPoint, greenCubeAABB, mCloneTransform.mPosition.y);
         Plane collisionPlane;
         collisionPlane.n = normalized(collisionNormal);
         collisionPlane.p = mCollisionPoint;
@@ -520,7 +588,7 @@ void Game::Update(float dt) {
         }
     }
     if(distanceFromBox <= 0.0f){
-        vec3 collisionNormal = GetAABBNormalFromPoint(mOtherCollisionPoint, greenCubeAABB);
+        vec3 collisionNormal = GetAABBNormalFromPoint(mOtherCollisionPoint, greenCubeAABB, mCloneTransform.mPosition.y);
         Plane collisionPlane;
         collisionPlane.n = normalized(collisionNormal);
         collisionPlane.p = mOtherCollisionPoint;
@@ -532,6 +600,34 @@ void Game::Update(float dt) {
         }
     }
 
+    OBB cubeOBB;
+    cubeOBB.c = vec3(10, 3, 20);
+    mat4 rotationMatrix = quatToMat4(angleAxis(TO_RAD(45.0f), vec3(0, 1, 0)));
+    cubeOBB.u[0] = normalized(transformVector(rotationMatrix, vec3(1, 0, 0)));
+    cubeOBB.u[1] = normalized(transformVector(rotationMatrix, vec3(0, 1, 0)));
+    cubeOBB.u[2] = normalized(transformVector(rotationMatrix, vec3(0, 0, 1)));
+    cubeOBB.e.x = 10.0f;
+    cubeOBB.e.y = 3.0f;
+    cubeOBB.e.z = 10.0f;
+    distanceFromBox = SqDistPointOBB(mCloneTransform.mPosition, cubeOBB);
+    if(distanceFromBox > 0.0f) {
+        ClosestPtPointOBB(mCloneTransform.mPosition, cubeOBB, mOBBCollisionPoint);
+        if(mCloneTransform.mPosition.y > mOBBCollisionPoint.y) {
+            mCloneIsJumping = true;
+        }
+    }
+    if(distanceFromBox <= 0.0f) {
+        vec3 collisionNormal = GetOBBNormalFromPoint(mOBBCollisionPoint, cubeOBB, mCloneTransform.mPosition.y);
+        Plane collisionPlane;
+        collisionPlane.n = normalized(collisionNormal);
+        collisionPlane.p = mOBBCollisionPoint;
+        mCloneTransform.mPosition = ClosestPtPointPlane(mCloneTransform.mPosition, collisionPlane);
+        if(collisionNormal.y) {
+            mCloneIsJumping = false;
+            mCloneVelocity.y = 0.0f; 
+            dirtyFlag = true;
+        }
+    }
 
     // TODO: add colision with the floor, gravity and a jump
     // floor collision test and resolution
@@ -551,7 +647,7 @@ void Game::Update(float dt) {
 
     }
     if(distanceFromFloor <= 0.0f){
-        vec3 collisionNormal = GetAABBNormalFromPoint(mFloorCollisionPont, floorAABB);
+        vec3 collisionNormal = GetAABBNormalFromPoint(mFloorCollisionPont, floorAABB, mCloneTransform.mPosition.y);
         Plane collisionPlane;
         collisionPlane.n = normalized(collisionNormal);
         collisionPlane.p = mFloorCollisionPont;
@@ -561,7 +657,6 @@ void Game::Update(float dt) {
             mCloneVelocity.y = 0.0f; 
         }
     }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -606,8 +701,7 @@ void Game::Render() {
 
 
 
-    // TODO: test AABB closet point
-
+    // TODO: test AABB closest point
     floorModel.mPosition = vec3(0, 2, 0);
     floorModel.mScale = vec3(4.0f, 4.0f, 4.0f);
     floorModel.mRotation = angleAxis(TO_RAD(0.0f), vec3(0, 1, 0));
@@ -625,6 +719,17 @@ void Game::Render() {
     mMesh.Bind();
     mStaticShader.Bind();
     mRenderer.DrawArray(mMesh.mVerticesCount);
+
+    // TODO: test OBB colsest point
+    floorModel.mPosition = vec3(10, 3, 20);
+    floorModel.mScale = vec3(20, 6, 20);
+    floorModel.mRotation = angleAxis(TO_RAD(45.0f), vec3(0, 1, 0));
+    mStaticShader.UpdateMat4("model", transformToMat4(floorModel));
+    mRedTexutre.Bind(&mStaticShader, "tex0", 0);
+    mMesh.Bind();
+    mStaticShader.Bind();
+    mRenderer.DrawArray(mMesh.mVerticesCount);
+
 
     floorModel.mPosition = mCollisionPoint;
     floorModel.mScale = vec3(0.2f, 0.2f, 0.2f);
@@ -645,6 +750,15 @@ void Game::Render() {
     mRenderer.DrawArray(mMesh.mVerticesCount);
 
     floorModel.mPosition = mOtherCollisionPoint;
+    floorModel.mScale = vec3(0.2f, 0.2f, 0.2f);
+    floorModel.mRotation = angleAxis(TO_RAD(0.0f), vec3(0, 1, 0));
+    mStaticShader.UpdateMat4("model", transformToMat4(floorModel));
+    mGreenTexutre.Bind(&mStaticShader, "tex0", 0);
+    mMesh.Bind();
+    mStaticShader.Bind();
+    mRenderer.DrawArray(mMesh.mVerticesCount);
+
+    floorModel.mPosition = mOBBCollisionPoint;
     floorModel.mScale = vec3(0.2f, 0.2f, 0.2f);
     floorModel.mRotation = angleAxis(TO_RAD(0.0f), vec3(0, 1, 0));
     mStaticShader.UpdateMat4("model", transformToMat4(floorModel));
